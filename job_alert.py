@@ -137,7 +137,17 @@ def check_jobs():
                 "8+",
                 "7+",
                 "6+",
-                "5+"
+                "5+",
+                "remote",
+                "offshore",
+                "usa",
+                "uk",
+                "canada",
+                "europe",
+                "singapore",
+                "australia"
+
+                  
             ]
 
             # Allow only relevant roles
