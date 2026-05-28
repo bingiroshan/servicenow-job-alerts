@@ -29,16 +29,24 @@ bot = telegram.Bot(token=BOT_TOKEN)
 
 seen_jobs = set()
 
+
+import asyncio
+
 # =========================
 # TELEGRAM FUNCTION
 # =========================
 
+async def async_send_message(message):
+    await bot.send_message(chat_id=CHAT_ID, text=message)
+
 def send_telegram_message(message):
     try:
-        bot.send_message(chat_id=CHAT_ID, text=message)
+        asyncio.run(async_send_message(message))
         print("Telegram message sent successfully")
     except Exception as e:
         print(f"Telegram Error: {e}")
+
+
 
 # =========================
 # EMAIL FUNCTION
