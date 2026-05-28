@@ -30,19 +30,29 @@ bot = telegram.Bot(token=BOT_TOKEN)
 seen_jobs = set()
 
 
-import asyncio
-
 # =========================
 # TELEGRAM FUNCTION
 # =========================
 
-async def async_send_message(message):
-    await bot.send_message(chat_id=CHAT_ID, text=message)
 
 def send_telegram_message(message):
+
     try:
-        asyncio.run(async_send_message(message))
-        print("Telegram message sent successfully")
+
+        telegram_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+
+        payload = {
+            "chat_id": CHAT_ID,
+            "text": message
+        }
+
+        response = requests.post(telegram_url, data=payload)
+
+        if response.status_code == 200:
+            print("Telegram message sent successfully")
+        else:
+            print("Telegram API Error:", response.text)
+
     except Exception as e:
         print(f"Telegram Error: {e}")
 
