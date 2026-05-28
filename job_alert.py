@@ -106,6 +106,47 @@ def check_jobs():
 
         try:
             title = job.find("h3").text.strip()
+title_lower = title.lower()
+
+# Relevant roles for your profile
+allowed_keywords = [
+    "servicenow administrator",
+    "servicenow admin",
+    "servicenow analyst",
+    "itsm",
+    "incident",
+    "support",
+    "service desk",
+    "administrator",
+    "analyst"
+]
+
+# Skip senior/high experience roles
+blocked_keywords = [
+    "senior",
+    "lead",
+    "manager",
+    "architect",
+    "principal",
+    "director",
+    "consultant",
+    "10+",
+    "8+",
+    "7+",
+    "6+",
+    "5+"
+]
+
+# Allow only relevant roles
+if not any(keyword in title_lower for keyword in allowed_keywords):
+    print("Skipped Irrelevant Role:", title)
+    continue
+
+# Skip senior roles
+if any(keyword in title_lower for keyword in blocked_keywords):
+    print("Skipped Senior Role:", title)
+    continue
+
             company = job.find("h4").text.strip()
             link = job.find("a")["href"]
 
