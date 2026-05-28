@@ -76,13 +76,14 @@ def check_jobs():
 
     print("Checking jobs...")
 
-    url = "https://www.linkedin.com/jobs/search/?keywords=ServiceNow%20Administrator"
+    url = "https://www.linkedin.com/jobs/search/?keywords=ServiceNow%20Administrator&location=Hyderabad%2C%20Telangana%2C%20India"
 
     headers = {
         "User-Agent": "Mozilla/5.0"
     }
 
     response = requests.get(url, headers=headers)
+
 
     soup = BeautifulSoup(response.text, "html.parser")
 
