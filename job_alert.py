@@ -1,116 +1,143 @@
 import requests
 from bs4 import BeautifulSoup
-import asyncio
-from telegram import Bot
+import telegram
 import time
+import os
+import smtplib
+from email.mime.text import MIMEText
 
-# ==========================
-# TELEGRAM CONFIG
-# ==========================
+# =========================
+# ENVIRONMENT VARIABLES
+# =========================
 
-BOT_TOKEN = "8706896578:AAFPGOrW7BIVqrGlwh0eUzrFM7p8ILvPBdg"
-CHAT_ID = "1077832381"
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
 
-bot = Bot(token=BOT_TOKEN)
+EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+RECEIVER_EMAIL = os.getenv("RECEIVER_EMAIL")
 
-# Store sent jobs
-sent_jobs = set()
+# =========================
+# TELEGRAM SETUP
+# =========================
 
-# ==========================
-# JOB URLS
-# ==========================
+bot = telegram.Bot(token=BOT_TOKEN)
 
-urls = [
-    "https://www.naukri.com/servicenow-administrator-jobs-in-hyderabad-2-to-5-years",
-    "https://in.indeed.com/jobs?q=servicenow+administrator&l=Hyderabad",
-    "https://www.foundit.in/srp/results?query=ServiceNow%20Administrator&locations=Hyderabad"
-]
+# =========================
+# TRACK SEEN JOBS
+# =========================
 
-headers = {
-    "User-Agent": "Mozilla/5.0"
-}
+seen_jobs = set()
 
-# ==========================
-# SEND TELEGRAM MESSAGE
-# ==========================
+# =========================
+# TELEGRAM FUNCTION
+# =========================
 
-async def send_telegram_message(message):
-    await bot.send_message(chat_id=CHAT_ID, text=message)
+def send_telegram_message(message):
+    try:
+        bot.send_message(chat_id=CHAT_ID, text=message)
+        print("Telegram message sent successfully")
+    except Exception as e:
+        print(f"Telegram Error: {e}")
 
-# ==========================
-# CHECK JOBS
-# ==========================
+# =========================
+# EMAIL FUNCTION
+# =========================
+
+def send_email(subject, body):
+    try:
+        msg = MIMEText(body)
+        msg['Subject'] = subject
+        msg['From'] = EMAIL_ADDRESS
+        msg['To'] = RECEIVER_EMAIL
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            smtp.send_message(msg)
+
+        print("Email sent successfully")
+
+    except Exception as e:
+        print(f"Email Error: {e}")
+
+# =========================
+# JOB SCRAPER
+# =========================
 
 def check_jobs():
 
-    for url in urls:
+    print("Checking jobs...")
+
+    url = "https://www.linkedin.com/jobs/search/?keywords=ServiceNow%20Administrator"
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    response = requests.get(url, headers=headers)
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    jobs = soup.find_all("div", class_="base-card")
+
+    if not jobs:
+        print("No jobs found")
+
+    for job in jobs[:10]:
 
         try:
+            title = job.find("h3").text.strip()
+            company = job.find("h4").text.strip()
+            link = job.find("a")["href"]
 
-            response = requests.get(url, headers=headers, timeout=20)
+            unique_job = title + company
 
-            soup = BeautifulSoup(response.text, "lxml")
+            if unique_job not in seen_jobs:
 
-            links = soup.find_all("a")
+                seen_jobs.add(unique_job)
 
-            for link in links:
+                job_message = f"""
+🚨 New ServiceNow Job Found
 
-                title = link.get_text(strip=True)
-                href = link.get("href")
+💼 Title: {title}
 
-                if not href:
-                    continue
-
-                keywords = [
-                    "servicenow",
-                    "administrator",
-                    "admin",
-                    "itsm"
-                ]
-
-                if any(word in title.lower() for word in keywords):
-
-                    unique_job = title + href
-
-                    if unique_job not in sent_jobs:
-
-                        sent_jobs.add(unique_job)
-
-                        message = f"""
-🚨 New ServiceNow Job
-
-📌 {title}
+🏢 Company: {company}
 
 🔗 Apply Here:
-{href}
+{link}
 """
 
-                        asyncio.run(
-                            send_telegram_message(message)
-                        )
+                print(job_message)
 
-                        print("Alert Sent")
+                # Telegram Alert
+                send_telegram_message(job_message)
+
+                # Email Alert
+                send_email(
+                    "New ServiceNow Job Found",
+                    job_message
+                )
 
         except Exception as e:
+            print(f"Job Parse Error: {e}")
 
-            print("Error:", e)
+# =========================
+# MAIN LOOP
+# =========================
 
-# ==========================
-# MAIN
-# ==========================
+print("ServiceNow Job Bot Started Successfully")
 
-print("Job Alert Bot Started...")
-
-asyncio.run(
-    send_telegram_message(
-        "✅ ServiceNow Job Bot Started Successfully"
-    )
-)
+send_telegram_message("✅ ServiceNow Job Bot Started Successfully")
 
 while True:
 
-    check_jobs()
+    try:
+        check_jobs()
 
-    print("Checking jobs...")
+    except Exception as e:
+        error_message = f"Bot Error: {e}"
+        print(error_message)
 
-    time.sleep(600)
+    print("Sleeping for 1 hour...")
+
+    time.sleep(3600)
