@@ -171,29 +171,24 @@ def check_jobs():
 """
 
             
-if is_duplicate(link):
-    print("Duplicate Job Skipped")
-    continue
+   if is_duplicate(link):
+       print("Duplicate Job Skipped")
+       continue
 
-print(message)
+   print(message)
 
-send_telegram_message(message)
+   send_telegram_message(message)
 
-send_email(
-    "New ServiceNow Job Alert",
-    message
-)
+   send_email(
+       "New ServiceNow Job Alert",
+       message
+   )
 
-save_job(link)
-
-
-
-                with open(SEEN_JOBS_FILE, "a") as file:
-                    file.write(link + "\n")
+   save_job(link)
 
 
-        except Exception as e:
-            print("Error:", e)
+except Exception as e:
+    print("Error:", e)
 
 # =========================
 # MAIN LOOP
