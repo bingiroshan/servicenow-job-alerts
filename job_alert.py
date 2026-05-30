@@ -140,7 +140,7 @@ def check_jobs():
             title_lower = title.lower()
 
             # =========================
-            # ALLOWED KEYWORDS
+            # ALLOWED ROLE KEYWORDS
             # =========================
 
             allowed_keywords = [
@@ -156,7 +156,7 @@ def check_jobs():
             ]
 
             # =========================
-            # BLOCKED KEYWORDS
+            # BLOCK SENIOR/REMOTE
             # =========================
 
             blocked_keywords = [
@@ -167,11 +167,6 @@ def check_jobs():
                 "principal",
                 "director",
                 "consultant",
-                "10+",
-                "8+",
-                "7+",
-                "6+",
-                "5+",
                 "remote",
                 "offshore",
                 "usa",
@@ -180,6 +175,22 @@ def check_jobs():
                 "europe",
                 "singapore",
                 "australia"
+            ]
+
+            # =========================
+            # EXPERIENCE FILTER
+            # =========================
+
+            blocked_experience = [
+                "5 year",
+                "5+",
+                "6 year",
+                "6+",
+                "7 year",
+                "7+",
+                "8 year",
+                "8+",
+                "10+"
             ]
 
             # =========================
@@ -214,6 +225,22 @@ def check_jobs():
 
                 continue
 
+            # =========================
+            # SKIP 5+ YEARS ROLES
+            # =========================
+
+            if any(
+                keyword in title_lower
+                for keyword in blocked_experience
+            ):
+
+                print(
+                    "Skipped High Experience Role:",
+                    title
+                )
+
+                continue
+
             company = job.find(
                 "h4"
             ).text.strip()
@@ -221,6 +248,9 @@ def check_jobs():
             link = job.find(
                 "a"
             )["href"]
+
+            # Remove LinkedIn tracking params
+            clean_link = link.split("?")[0]
 
             message = f"""
 🎉 New ServiceNow Job Found
@@ -230,14 +260,14 @@ def check_jobs():
 🏢 Company: {company}
 
 🔗 Apply Here:
-{link}
+{clean_link}
 """
 
             # =========================
             # DUPLICATE CHECK
             # =========================
 
-            if is_duplicate(link):
+            if is_duplicate(clean_link):
 
                 print("Duplicate Job Skipped")
 
@@ -245,12 +275,12 @@ def check_jobs():
 
             # =========================
             # FIRST STARTUP
-            # SAVE OLD JOBS SILENTLY
+            # IGNORE OLD JOBS
             # =========================
 
             if first_run:
 
-                save_job(link)
+                save_job(clean_link)
 
                 print("Old Job Ignored")
 
@@ -265,7 +295,7 @@ def check_jobs():
                 message
             )
 
-            save_job(link)
+            save_job(clean_link)
 
         except Exception as e:
 
@@ -294,3 +324,4 @@ while True:
     check_jobs()
 
     time.sleep(1800)
+
