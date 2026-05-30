@@ -1,10 +1,18 @@
 from filters import is_duplicate, save_job
+
 import requests
 from bs4 import BeautifulSoup
 import time
 import smtplib
 import os
+
 from email.mime.text import MIMEText
+
+# =========================
+# FIRST RUN CONTROL
+# =========================
+
+first_run = True
 
 # =========================
 # TELEGRAM CONFIG
@@ -28,6 +36,7 @@ TO_EMAIL = os.getenv("TO_EMAIL")
 def send_telegram_message(message):
 
     try:
+
         telegram_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
 
         payload = {
@@ -35,7 +44,10 @@ def send_telegram_message(message):
             "text": message
         }
 
-        response = requests.post(telegram_url, data=payload)
+        response = requests.post(
+            telegram_url,
+            data=payload
+        )
 
         if response.status_code == 200:
             print("Telegram message sent successfully")
@@ -53,17 +65,24 @@ def send_telegram_message(message):
 def send_email(subject, body):
 
     try:
+
         msg = MIMEText(body)
 
         msg["Subject"] = subject
         msg["From"] = EMAIL_ADDRESS
         msg["To"] = TO_EMAIL
 
-        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server = smtplib.SMTP(
+            "smtp.gmail.com",
+            587
+        )
 
         server.starttls()
 
-        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        server.login(
+            EMAIL_ADDRESS,
+            EMAIL_PASSWORD
+        )
 
         server.sendmail(
             EMAIL_ADDRESS,
@@ -84,6 +103,8 @@ def send_email(subject, body):
 
 def check_jobs():
 
+    global first_run
+
     print("Checking jobs...")
 
     url = "https://www.linkedin.com/jobs/search/?keywords=ServiceNow%20Administrator&location=Hyderabad%2C%20Telangana%2C%20India"
@@ -92,11 +113,20 @@ def check_jobs():
         "User-Agent": "Mozilla/5.0"
     }
 
-    response = requests.get(url, headers=headers)
+    response = requests.get(
+        url,
+        headers=headers
+    )
 
-    soup = BeautifulSoup(response.text, "html.parser")
+    soup = BeautifulSoup(
+        response.text,
+        "html.parser"
+    )
 
-    jobs = soup.find_all("div", class_="base-card")
+    jobs = soup.find_all(
+        "div",
+        class_="base-card"
+    )
 
     if not jobs:
         print("No jobs found")
@@ -104,6 +134,7 @@ def check_jobs():
     for job in jobs:
 
         try:
+
             title = job.find("h3").text.strip()
 
             title_lower = title.lower()
@@ -152,24 +183,44 @@ def check_jobs():
             ]
 
             # =========================
-            # ALLOW ONLY RELEVANT ROLES
+            # SKIP IRRELEVANT ROLES
             # =========================
 
-            if not any(keyword in title_lower for keyword in allowed_keywords):
-                print("Skipped Irrelevant Role:", title)
+            if not any(
+                keyword in title_lower
+                for keyword in allowed_keywords
+            ):
+
+                print(
+                    "Skipped Irrelevant Role:",
+                    title
+                )
+
                 continue
 
             # =========================
-            # SKIP SENIOR ROLES
+            # SKIP SENIOR/REMOTE ROLES
             # =========================
 
-            if any(keyword in title_lower for keyword in blocked_keywords):
-                print("Skipped Senior/Remote Role:", title)
+            if any(
+                keyword in title_lower
+                for keyword in blocked_keywords
+            ):
+
+                print(
+                    "Skipped Senior/Remote Role:",
+                    title
+                )
+
                 continue
 
-            company = job.find("h4").text.strip()
+            company = job.find(
+                "h4"
+            ).text.strip()
 
-            link = job.find("a")["href"]
+            link = job.find(
+                "a"
+            )["href"]
 
             message = f"""
 🎉 New ServiceNow Job Found
@@ -187,7 +238,22 @@ def check_jobs():
             # =========================
 
             if is_duplicate(link):
+
                 print("Duplicate Job Skipped")
+
+                continue
+
+            # =========================
+            # FIRST STARTUP
+            # SAVE OLD JOBS SILENTLY
+            # =========================
+
+            if first_run:
+
+                save_job(link)
+
+                print("Old Job Ignored")
+
                 continue
 
             print(message)
@@ -202,13 +268,22 @@ def check_jobs():
             save_job(link)
 
         except Exception as e:
+
             print("Error:", e)
+
+    # =========================
+    # FIRST RUN COMPLETE
+    # =========================
+
+    first_run = False
 
 # =========================
 # MAIN LOOP
 # =========================
 
-print("ServiceNow Job Bot Started Successfully")
+print(
+    "ServiceNow Job Bot Started Successfully"
+)
 
 send_telegram_message(
     "✅ ServiceNow Job Bot Started Successfully"
