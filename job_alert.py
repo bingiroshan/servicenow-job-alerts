@@ -26,7 +26,15 @@ TO_EMAIL = os.getenv("TO_EMAIL")
 # TRACK SEEN JOBS
 # =========================
 
-seen_jobs = set()
+SEEN_JOBS_FILE = "seen_jobs.txt"
+
+# Load old jobs
+try:
+    with open(SEEN_JOBS_FILE, "r") as file:
+        seen_jobs = set(file.read().splitlines())
+except FileNotFoundError:
+    seen_jobs = set()
+
 
 # =========================
 # TELEGRAM FUNCTION
@@ -187,6 +195,10 @@ def check_jobs():
                 )
 
                 seen_jobs.add(link)
+
+                with open(SEEN_JOBS_FILE, "a") as file:
+                    file.write(link + "\n")
+
 
         except Exception as e:
             print("Error:", e)
