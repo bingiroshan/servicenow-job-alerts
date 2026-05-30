@@ -4,9 +4,7 @@ from bs4 import BeautifulSoup
 import time
 import smtplib
 import os
-
 from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
 # =========================
 # TELEGRAM CONFIG
@@ -41,6 +39,7 @@ def send_telegram_message(message):
 
         if response.status_code == 200:
             print("Telegram message sent successfully")
+
         else:
             print("Telegram API Error:", response.text)
 
@@ -54,20 +53,23 @@ def send_telegram_message(message):
 def send_email(subject, body):
 
     try:
-        msg = MIMEMultipart()
+        msg = MIMEText(body)
 
+        msg["Subject"] = subject
         msg["From"] = EMAIL_ADDRESS
         msg["To"] = TO_EMAIL
-        msg["Subject"] = subject
-
-        msg.attach(MIMEText(body, "plain"))
 
         server = smtplib.SMTP("smtp.gmail.com", 587)
+
         server.starttls()
 
         server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
 
-        server.send_message(msg)
+        server.sendmail(
+            EMAIL_ADDRESS,
+            TO_EMAIL,
+            msg.as_string()
+        )
 
         server.quit()
 
@@ -106,7 +108,10 @@ def check_jobs():
 
             title_lower = title.lower()
 
-            # Relevant roles for your profile
+            # =========================
+            # ALLOWED KEYWORDS
+            # =========================
+
             allowed_keywords = [
                 "servicenow administrator",
                 "servicenow admin",
@@ -119,7 +124,10 @@ def check_jobs():
                 "analyst"
             ]
 
-            # Skip senior/high experience roles
+            # =========================
+            # BLOCKED KEYWORDS
+            # =========================
+
             blocked_keywords = [
                 "senior",
                 "lead",
@@ -141,18 +149,22 @@ def check_jobs():
                 "europe",
                 "singapore",
                 "australia"
-
-                  
             ]
 
-            # Allow only relevant roles
+            # =========================
+            # ALLOW ONLY RELEVANT ROLES
+            # =========================
+
             if not any(keyword in title_lower for keyword in allowed_keywords):
                 print("Skipped Irrelevant Role:", title)
                 continue
 
-            # Skip senior roles
+            # =========================
+            # SKIP SENIOR ROLES
+            # =========================
+
             if any(keyword in title_lower for keyword in blocked_keywords):
-                print("Skipped Senior Role:", title)
+                print("Skipped Senior/Remote Role:", title)
                 continue
 
             company = job.find("h4").text.strip()
@@ -170,25 +182,27 @@ def check_jobs():
 {link}
 """
 
-            
-   if is_duplicate(link):
-       print("Duplicate Job Skipped")
-       continue
+            # =========================
+            # DUPLICATE CHECK
+            # =========================
 
-   print(message)
+            if is_duplicate(link):
+                print("Duplicate Job Skipped")
+                continue
 
-   send_telegram_message(message)
+            print(message)
 
-   send_email(
-       "New ServiceNow Job Alert",
-       message
-   )
+            send_telegram_message(message)
 
-   save_job(link)
+            send_email(
+                "New ServiceNow Job Alert",
+                message
+            )
 
+            save_job(link)
 
-except Exception as e:
-    print("Error:", e)
+        except Exception as e:
+            print("Error:", e)
 
 # =========================
 # MAIN LOOP
