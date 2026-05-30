@@ -1,3 +1,4 @@
+from filters import is_duplicate, save_job
 import requests
 from bs4 import BeautifulSoup
 import time
@@ -21,20 +22,6 @@ CHAT_ID = os.getenv("CHAT_ID")
 EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 TO_EMAIL = os.getenv("TO_EMAIL")
-
-# =========================
-# TRACK SEEN JOBS
-# =========================
-
-SEEN_JOBS_FILE = "seen_jobs.txt"
-
-# Load old jobs
-try:
-    with open(SEEN_JOBS_FILE, "r") as file:
-        seen_jobs = set(file.read().splitlines())
-except FileNotFoundError:
-    seen_jobs = set()
-
 
 # =========================
 # TELEGRAM FUNCTION
@@ -183,18 +170,23 @@ def check_jobs():
 {link}
 """
 
-            if link not in seen_jobs:
+            
+if is_duplicate(link):
+    print("Duplicate Job Skipped")
+    continue
 
-                print(message)
+print(message)
 
-                send_telegram_message(message)
+send_telegram_message(message)
 
-                send_email(
-                    "New ServiceNow Job Alert",
-                    message
-                )
+send_email(
+    "New ServiceNow Job Alert",
+    message
+)
 
-                seen_jobs.add(link)
+save_job(link)
+
+
 
                 with open(SEEN_JOBS_FILE, "a") as file:
                     file.write(link + "\n")
