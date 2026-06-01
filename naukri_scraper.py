@@ -26,29 +26,29 @@ def get_naukri_jobs():
             "html.parser"
         )
 
-        jobs = soup.find_all(
-            "article",
-            class_="jobTuple"
-        )
+        jobs = soup.find_all("div", class_="srp-jobtuple-wrapper")
+
+        print(f"Naukri Jobs Found: {len(jobs)}")
 
         for job in jobs:
 
             try:
 
-                title = job.find(
-                    "a",
-                    class_="title"
-                ).text.strip()
+                title_tag = job.find("a", class_="title")
 
-                company = job.find(
+                company_tag = job.find(
                     "a",
                     class_="comp-name"
-                ).text.strip()
+                )
 
-                link = job.find(
-                    "a",
-                    class_="title"
-                )["href"]
+                if not title_tag or not company_tag:
+                    continue
+
+                title = title_tag.text.strip()
+
+                company = company_tag.text.strip()
+
+                link = title_tag["href"]
 
                 jobs_list.append({
                     "title": title,
