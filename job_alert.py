@@ -1,5 +1,5 @@
 from filters import is_duplicate, save_job
-
+from naukri_scraper import get_naukri_jobs
 import requests
 from bs4 import BeautifulSoup
 import time
