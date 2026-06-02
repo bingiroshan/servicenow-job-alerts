@@ -1,40 +1,47 @@
-import requests
+from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
 
 
 def get_naukri_jobs():
 
-    print("Checking Naukri jobs...")
+    print("Checking Naukri jobs with Playwright...")
 
     jobs_list = []
 
     url = "https://www.naukri.com/servicenow-administrator-jobs-in-hyderabad"
 
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
-
     try:
 
-        response = requests.get(
-            url,
-            headers=headers
-        )
+        with sync_playwright() as p:
 
-        print("Naukri Status Code:", response.status_code)
+            browser = p.chromium.launch(
+                headless=True
+            )
+
+            page = browser.new_page()
+
+            page.goto(
+                url,
+                timeout=60000
+            )
+
+            page.wait_for_timeout(5000)
+
+            html = page.content()
+
+            browser.close()
 
         soup = BeautifulSoup(
-            response.text,
+            html,
             "html.parser"
         )
 
-        # UPDATED SELECTOR
         jobs = soup.find_all(
             "div",
             class_="cust-job-tuple"
         )
 
-        print("Total Naukri Jobs Found:", len(jobs))
+        print(f"Naukri Jobs Found: {len(jobs)}")
 
         for job in jobs:
 
@@ -45,16 +52,19 @@ def get_naukri_jobs():
                     class_="title"
                 )
 
+                company_tag = job.find(
+                    "a",
+                    class_="comp-name"
+                )
+
                 if not title_tag:
                     continue
 
                 title = title_tag.text.strip()
 
-                link = title_tag.get("href", "")
-
-                company_tag = job.find(
-                    "a",
-                    class_="comp-name"
+                link = title_tag.get(
+                    "href",
+                    ""
                 )
 
                 if company_tag:
@@ -62,7 +72,7 @@ def get_naukri_jobs():
                 else:
                     company = "Unknown"
 
-                print("Naukri Job Found:", title)
+                print("Naukri Job:", title)
 
                 jobs_list.append({
                     "title": title,
@@ -75,6 +85,6 @@ def get_naukri_jobs():
                 print("Naukri Parsing Error:", e)
 
     except Exception as e:
-        print("Naukri Error:", e)
+        print("Naukri Playwright Error:", e)
 
     return jobs_list
