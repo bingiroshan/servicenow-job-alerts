@@ -1,5 +1,6 @@
 from filters import is_duplicate, save_job
 from naukri_scraper import get_naukri_jobs
+
 import requests
 from bs4 import BeautifulSoup
 import time
@@ -98,14 +99,131 @@ def send_email(subject, body):
         print(f"Email Error: {e}")
 
 # =========================
-# JOB SCRAPER
+# COMMON JOB FILTER
 # =========================
 
-def check_jobs():
+def is_valid_job(title):
+
+    title_lower = title.lower()
+
+    allowed_keywords = [
+        "servicenow administrator",
+        "servicenow admin",
+        "servicenow analyst",
+        "itsm",
+        "service desk",
+        "incident"
+    ]
+
+    blocked_keywords = [
+        "senior",
+        "lead",
+        "manager",
+        "architect",
+        "principal",
+        "director",
+        "consultant",
+        "remote",
+        "offshore",
+        "usa",
+        "uk",
+        "canada",
+        "europe",
+        "singapore",
+        "australia",
+        "5 year",
+        "5+",
+        "6 year",
+        "6+",
+        "7 year",
+        "7+",
+        "8 year",
+        "8+",
+        "10+"
+    ]
+
+    if not any(
+        keyword in title_lower
+        for keyword in allowed_keywords
+    ):
+
+        print("Skipped Irrelevant Role:", title)
+
+        return False
+
+    if any(
+        keyword in title_lower
+        for keyword in blocked_keywords
+    ):
+
+        print("Skipped Senior/Remote Role:", title)
+
+        return False
+
+    return True
+
+# =========================
+# PROCESS JOB
+# =========================
+
+def process_job(
+    title,
+    company,
+    link,
+    platform
+):
 
     global first_run
 
-    print("Checking jobs...")
+    clean_link = link.split("?")[0]
+
+    # Duplicate Check
+    if is_duplicate(clean_link):
+
+        print("Duplicate Job Skipped")
+
+        return
+
+    # Ignore old jobs during first startup
+    if first_run:
+
+        save_job(clean_link)
+
+        print("Old Job Ignored")
+
+        return
+
+    message = f"""
+🚀 New ServiceNow Job Found
+
+🌐 Platform: {platform}
+
+💼 Title: {title}
+
+🏢 Company: {company}
+
+🔗 Apply Here:
+{clean_link}
+"""
+
+    print(message)
+
+    send_telegram_message(message)
+
+    send_email(
+        "New ServiceNow Job Alert",
+        message
+    )
+
+    save_job(clean_link)
+
+# =========================
+# LINKEDIN JOBS
+# =========================
+
+def check_linkedin_jobs():
+
+    print("Checking LinkedIn jobs...")
 
     url = "https://www.linkedin.com/jobs/search/?keywords=ServiceNow%20Administrator&location=Hyderabad%2C%20Telangana%2C%20India"
 
@@ -128,8 +246,7 @@ def check_jobs():
         class_="base-card"
     )
 
-    if not jobs:
-        print("No jobs found")
+    print(f"LinkedIn Jobs Found: {len(jobs)}")
 
     for job in jobs:
 
@@ -137,108 +254,7 @@ def check_jobs():
 
             title = job.find("h3").text.strip()
 
-            title_lower = title.lower()
-
-            # =========================
-            # ALLOWED ROLE KEYWORDS
-            # =========================
-
-            allowed_keywords = [
-                "servicenow administrator",
-                "servicenow admin",
-                "servicenow analyst",
-                "itsm",
-                "incident",
-                "support",
-                "service desk",
-                "administrator",
-                "analyst"
-            ]
-
-            # =========================
-            # BLOCK SENIOR/REMOTE
-            # =========================
-
-            blocked_keywords = [
-                "senior",
-                "lead",
-                "manager",
-                "architect",
-                "principal",
-                "director",
-                "consultant",
-                "remote",
-                "offshore",
-                "usa",
-                "uk",
-                "canada",
-                "europe",
-                "singapore",
-                "australia"
-            ]
-
-            # =========================
-            # EXPERIENCE FILTER
-            # =========================
-
-            blocked_experience = [
-                "5 year",
-                "5+",
-                "6 year",
-                "6+",
-                "7 year",
-                "7+",
-                "8 year",
-                "8+",
-                "10+"
-            ]
-
-            # =========================
-            # SKIP IRRELEVANT ROLES
-            # =========================
-
-            if not any(
-                keyword in title_lower
-                for keyword in allowed_keywords
-            ):
-
-                print(
-                    "Skipped Irrelevant Role:",
-                    title
-                )
-
-                continue
-
-            # =========================
-            # SKIP SENIOR/REMOTE ROLES
-            # =========================
-
-            if any(
-                keyword in title_lower
-                for keyword in blocked_keywords
-            ):
-
-                print(
-                    "Skipped Senior/Remote Role:",
-                    title
-                )
-
-                continue
-
-            # =========================
-            # SKIP 5+ YEARS ROLES
-            # =========================
-
-            if any(
-                keyword in title_lower
-                for keyword in blocked_experience
-            ):
-
-                print(
-                    "Skipped High Experience Role:",
-                    title
-                )
-
+            if not is_valid_job(title):
                 continue
 
             company = job.find(
@@ -249,63 +265,50 @@ def check_jobs():
                 "a"
             )["href"]
 
-            # Remove LinkedIn tracking params
-            clean_link = link.split("?")[0]
-
-            message = f"""
-🎉 New ServiceNow Job Found
-
-💼 Title: {title}
-
-🏢 Company: {company}
-
-🔗 Apply Here:
-{clean_link}
-"""
-
-            # =========================
-            # DUPLICATE CHECK
-            # =========================
-
-            if is_duplicate(clean_link):
-
-                print("Duplicate Job Skipped")
-
-                continue
-
-            # =========================
-            # FIRST STARTUP
-            # IGNORE OLD JOBS
-            # =========================
-
-            if first_run:
-
-                save_job(clean_link)
-
-                print("Old Job Ignored")
-
-                continue
-
-            print(message)
-
-            send_telegram_message(message)
-
-            send_email(
-                "New ServiceNow Job Alert",
-                message
+            process_job(
+                title,
+                company,
+                link,
+                "LinkedIn"
             )
 
-            save_job(clean_link)
+        except Exception as e:
+            print("LinkedIn Error:", e)
+
+# =========================
+# NAUKRI JOBS
+# =========================
+
+def check_naukri_jobs():
+
+    print("Checking Naukri jobs...")
+
+    naukri_jobs = get_naukri_jobs()
+
+    print(f"Naukri Jobs Retrieved: {len(naukri_jobs)}")
+
+    for job in naukri_jobs:
+
+        try:
+
+            title = job["title"]
+
+            if not is_valid_job(title):
+                continue
+
+            company = job["company"]
+
+            link = job["link"]
+
+            process_job(
+                title,
+                company,
+                link,
+                "Naukri"
+            )
 
         except Exception as e:
-
-            print("Error:", e)
-
-    # =========================
-    # FIRST RUN COMPLETE
-    # =========================
-
-    first_run = False
+            print("Naukri Error:", e)
 
 # =========================
 # MAIN LOOP
@@ -321,7 +324,11 @@ send_telegram_message(
 
 while True:
 
-    check_jobs()
+    check_linkedin_jobs()
+
+    check_naukri_jobs()
+
+    first_run = False
 
     time.sleep(1800)
 

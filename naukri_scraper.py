@@ -30,7 +30,7 @@ def get_naukri_jobs():
 
         jobs = soup.find_all("article")
 
-        print("Total Article Tags Found:", len(jobs))
+        print("Total Naukri Articles Found:", len(jobs))
 
         for job in jobs:
 
@@ -45,7 +45,10 @@ def get_naukri_jobs():
 
                 link = title_tag.get("href", "")
 
-                company_tag = job.find("a", class_="comp-name")
+                company_tag = job.find(
+                    "a",
+                    class_="comp-name"
+                )
 
                 if company_tag:
                     company = company_tag.text.strip()
@@ -68,3 +71,4 @@ def get_naukri_jobs():
         print("Naukri Error:", e)
 
     return jobs_list
+
