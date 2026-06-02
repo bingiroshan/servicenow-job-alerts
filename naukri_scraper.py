@@ -21,34 +21,38 @@ def get_naukri_jobs():
             headers=headers
         )
 
+        print("Naukri Status Code:", response.status_code)
+
         soup = BeautifulSoup(
             response.text,
             "html.parser"
         )
 
-        jobs = soup.find_all("div", class_="srp-jobtuple-wrapper")
+        jobs = soup.find_all("article")
 
-        print(f"Naukri Jobs Found: {len(jobs)}")
+        print("Total Article Tags Found:", len(jobs))
 
         for job in jobs:
 
             try:
 
-                title_tag = job.find("a", class_="title")
+                title_tag = job.find("a")
 
-                company_tag = job.find(
-                    "a",
-                    class_="comp-name"
-                )
-
-                if not title_tag or not company_tag:
+                if not title_tag:
                     continue
 
                 title = title_tag.text.strip()
 
-                company = company_tag.text.strip()
+                link = title_tag.get("href", "")
 
-                link = title_tag["href"]
+                company_tag = job.find("a", class_="comp-name")
+
+                if company_tag:
+                    company = company_tag.text.strip()
+                else:
+                    company = "Unknown"
+
+                print("Naukri Job Found:", title)
 
                 jobs_list.append({
                     "title": title,
