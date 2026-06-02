@@ -28,15 +28,22 @@ def get_naukri_jobs():
             "html.parser"
         )
 
-        jobs = soup.find_all("article")
+        # UPDATED SELECTOR
+        jobs = soup.find_all(
+            "div",
+            class_="cust-job-tuple"
+        )
 
-        print("Total Naukri Articles Found:", len(jobs))
+        print("Total Naukri Jobs Found:", len(jobs))
 
         for job in jobs:
 
             try:
 
-                title_tag = job.find("a")
+                title_tag = job.find(
+                    "a",
+                    class_="title"
+                )
 
                 if not title_tag:
                     continue
@@ -71,4 +78,3 @@ def get_naukri_jobs():
         print("Naukri Error:", e)
 
     return jobs_list
-
