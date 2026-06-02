@@ -15,17 +15,23 @@ def get_naukri_jobs():
         with sync_playwright() as p:
 
             browser = p.chromium.launch(
-                headless=True
+                headless=True,
+                args=[
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-blink-features=AutomationControlled"
+                ]
             )
 
             page = browser.new_page()
 
             page.goto(
                 url,
-                timeout=60000
+                wait_until="domcontentloaded",
+                timeout=30000
             )
 
-            page.wait_for_timeout(5000)
+            page.wait_for_timeout(3000)
 
             html = page.content()
 
