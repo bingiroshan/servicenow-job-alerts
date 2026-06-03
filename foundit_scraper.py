@@ -37,41 +37,43 @@ def get_foundit_jobs():
             "html.parser"
         )
 
-        jobs = soup.find_all("div")
+        # FIND ALL LINKS
+        links = soup.find_all("a")
 
         print(
-            f"Total Foundit Divs Found: {len(jobs)}"
+            f"Total Foundit Links Found: {len(links)}"
         )
 
-        for job in jobs:
+        for link_tag in links:
 
             try:
 
-                title_tag = job.find("h3")
-
-                link_tag = job.find("a")
-
-                if not title_tag:
-                    continue
-
-                if not link_tag:
-                    continue
-
-                title = title_tag.text.strip()
-
-                link = link_tag.get(
+                href = link_tag.get(
                     "href",
                     ""
                 )
 
-                if not link.startswith("http"):
+                text = link_tag.text.strip()
 
-                    link = (
+                # FILTER JOB LINKS
+                if (
+                    "/job/"
+                    not in href.lower()
+                ):
+
+                    continue
+
+                if len(text) < 5:
+                    continue
+
+                title = text
+
+                if not href.startswith("http"):
+
+                    href = (
                         "https://www.foundit.in"
-                        + link
+                        + href
                     )
-
-                company = "Unknown"
 
                 print(
                     "Foundit Job:",
@@ -82,9 +84,9 @@ def get_foundit_jobs():
 
                     "title": title,
 
-                    "company": company,
+                    "company": "Unknown",
 
-                    "link": link,
+                    "link": href,
 
                     "platform": "Foundit"
                 })
