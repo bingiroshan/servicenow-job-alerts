@@ -37,43 +37,60 @@ def get_foundit_jobs():
             "html.parser"
         )
 
-        # FIND ALL LINKS
-        links = soup.find_all("a")
+        # FIND ALL JOB CARDS
+        job_cards = soup.find_all("article")
 
         print(
-            f"Total Foundit Links Found: {len(links)}"
+            f"Foundit Job Cards Found: {len(job_cards)}"
         )
 
-        for link_tag in links:
+        for card in job_cards:
 
             try:
 
-                href = link_tag.get(
+                # TITLE
+                title_tag = card.find("h3")
+
+                if not title_tag:
+                    continue
+
+                title = title_tag.text.strip()
+
+                if len(title) < 5:
+                    continue
+
+                # LINK
+                link_tag = card.find("a")
+
+                if not link_tag:
+                    continue
+
+                link = link_tag.get(
                     "href",
                     ""
                 )
 
-                text = link_tag.text.strip()
+                if not link.startswith("http"):
 
-                # FILTER JOB LINKS
-                if (
-                    "/job/"
-                    not in href.lower()
-                ):
-
-                    continue
-
-                if len(text) < 5:
-                    continue
-
-                title = text
-
-                if not href.startswith("http"):
-
-                    href = (
+                    link = (
                         "https://www.foundit.in"
-                        + href
+                        + link
                     )
+
+                # COMPANY
+                company = "Unknown"
+
+                company_tag = card.find("span")
+
+                if company_tag:
+
+                    company_text = (
+                        company_tag.text.strip()
+                    )
+
+                    if len(company_text) > 1:
+
+                        company = company_text
 
                 print(
                     "Foundit Job:",
@@ -84,9 +101,9 @@ def get_foundit_jobs():
 
                     "title": title,
 
-                    "company": "Unknown",
+                    "company": company,
 
-                    "link": href,
+                    "link": link,
 
                     "platform": "Foundit"
                 })
