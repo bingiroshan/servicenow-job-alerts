@@ -1,3 +1,5 @@
+import hashlib
+
 SEEN_JOBS_FILE = "seen_jobs.txt"
 
 # Load already seen jobs
@@ -18,18 +20,47 @@ except FileNotFoundError:
     seen_jobs = set()
 
 
-def is_duplicate(link):
+# =========================
+# CREATE UNIQUE JOB ID
+# =========================
 
-    return link in seen_jobs
+def generate_job_id(
+    title,
+    company,
+    platform
+):
+
+    unique_string = (
+        f"{title.lower()}|"
+        f"{company.lower()}|"
+        f"{platform.lower()}"
+    )
+
+    return hashlib.md5(
+        unique_string.encode()
+    ).hexdigest()
 
 
-def save_job(link):
+# =========================
+# DUPLICATE CHECK
+# =========================
 
-    seen_jobs.add(link)
+def is_duplicate(job_id):
+
+    return job_id in seen_jobs
+
+
+# =========================
+# SAVE JOB
+# =========================
+
+def save_job(job_id):
+
+    seen_jobs.add(job_id)
 
     with open(
         SEEN_JOBS_FILE,
         "a"
     ) as file:
 
-        file.write(link + "\n")
+        file.write(job_id + "\n")

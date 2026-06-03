@@ -1,5 +1,10 @@
-from filters import is_duplicate, save_job
-from naukri_scraper import get_naukri_jobs
+from filters import (
+    is_duplicate,
+    save_job,
+    generate_job_id
+)
+
+from foundit_scraper import get_foundit_jobs
 
 import requests
 from bs4 import BeautifulSoup
@@ -14,6 +19,177 @@ from email.mime.text import MIMEText
 # =========================
 
 first_run = True
+
+# =========================
+# PRODUCT BASED COMPANIES
+# =========================
+
+PRODUCT_BASED_COMPANIES = [
+
+    "google",
+    "microsoft",
+    "amazon",
+    "salesforce",
+    "servicenow",
+    "oracle",
+    "adobe",
+    "sap",
+    "atlassian",
+    "vmware",
+    "intel",
+    "paypal",
+    "uber",
+    "netflix",
+    "apple",
+    "meta",
+    "ibm",
+    "dell",
+    "hp",
+    "cisco",
+    "linkedin",
+    "jpmorgan",
+    "goldman sachs",
+    "wells fargo",
+    "american express",
+    "visa",
+    "mastercard",
+    "siemens",
+    "sony",
+    "nvidia",
+    "qualcomm",
+    "zoho",
+    "freshworks",
+    "intuit",
+    "swiggy",
+    "flipkart",
+    "meesho",
+    "razorpay",
+    "paytm",
+    "phonepe"
+]
+
+
+def is_product_company(company):
+
+    company_lower = company.lower()
+
+    return any(
+        product_company in company_lower
+        for product_company
+        in PRODUCT_BASED_COMPANIES
+    )
+
+# =========================
+# EXPERIENCE DETECTION
+# =========================
+
+def detect_experience(title):
+
+    title_lower = title.lower()
+
+    # HIGH EXPERIENCE
+    high_experience_keywords = [
+
+        "5+",
+        "6+",
+        "7+",
+        "8+",
+        "10+",
+
+        "5 year",
+        "6 year",
+        "7 year",
+        "8 year",
+        "10 year",
+
+        "senior",
+        "lead",
+        "architect",
+        "principal"
+    ]
+
+    # MID EXPERIENCE
+    mid_experience_keywords = [
+
+        "2 year",
+        "3 year",
+        "4 year",
+
+        "2+",
+        "3+",
+        "4+"
+    ]
+
+    # CHECK HIGH EXPERIENCE
+    if any(
+        keyword in title_lower
+        for keyword in high_experience_keywords
+    ):
+
+        return "HIGH"
+
+    # CHECK MID EXPERIENCE
+    if any(
+        keyword in title_lower
+        for keyword in mid_experience_keywords
+    ):
+
+        return "MID"
+
+    # DEFAULT
+    return "UNKNOWN"
+
+# =========================
+# PRIORITY SCORING
+# =========================
+
+def calculate_priority(
+    title,
+    company
+):
+
+    score = 0
+
+    title_lower = title.lower()
+
+    # PRODUCT COMPANY BONUS
+    if is_product_company(company):
+        score += 5
+
+    # SERVICENOW BONUS
+    if "servicenow" in title_lower:
+        score += 3
+
+    # ADMIN BONUS
+    if (
+        "admin" in title_lower
+        or
+        "administrator" in title_lower
+    ):
+        score += 3
+
+    # ITSM BONUS
+    if "itsm" in title_lower:
+        score += 2
+
+    # EXPERIENCE BONUS
+    experience_level = detect_experience(title)
+
+    if experience_level == "MID":
+        score += 3
+
+    elif experience_level == "HIGH":
+        score -= 5
+
+    # FINAL PRIORITY
+    if score >= 8:
+        return "🔥 HIGH PRIORITY"
+
+    elif score >= 5:
+        return "⭐ MEDIUM PRIORITY"
+
+    else:
+        return "⚪ LOW PRIORITY"
 
 # =========================
 # TELEGRAM CONFIG
@@ -99,7 +275,7 @@ def send_email(subject, body):
         print(f"Email Error: {e}")
 
 # =========================
-# COMMON JOB FILTER
+# JOB FILTER
 # =========================
 
 def is_valid_job(title):
@@ -107,41 +283,98 @@ def is_valid_job(title):
     title_lower = title.lower()
 
     allowed_keywords = [
+
+        "servicenow",
+
         "servicenow administrator",
+
         "servicenow admin",
+
         "servicenow analyst",
+
+        "servicenow developer",
+
         "itsm",
+
         "service desk",
-        "incident"
+
+        "incident",
+
+        "platform",
+
+        "admin",
+
+        "developer"
     ]
 
     blocked_keywords = [
+
         "senior",
+
         "lead",
+
         "manager",
+
         "architect",
+
         "principal",
+
         "director",
+
         "consultant",
+
         "remote",
+
         "offshore",
+
         "usa",
+
         "uk",
+
         "canada",
+
         "europe",
+
         "singapore",
+
         "australia",
-        "5 year",
-        "5+",
-        "6 year",
-        "6+",
-        "7 year",
-        "7+",
+
+        "staff engineer",
+
+        "technical lead",
+
+        "product owner",
+
+        "12 year",
+
+        "10 year",
+
+        "9 year",
+
         "8 year",
+
+        "7 year",
+
+        "6 year",
+
+        "5 year",
+
+        "12+",
+
+        "10+",
+
+        "9+",
+
         "8+",
-        "10+"
+
+        "7+",
+
+        "6+",
+
+        "5+"
     ]
 
+    # ALLOWED CHECK
     if not any(
         keyword in title_lower
         for keyword in allowed_keywords
@@ -151,6 +384,7 @@ def is_valid_job(title):
 
         return False
 
+    # BLOCKED CHECK
     if any(
         keyword in title_lower
         for keyword in blocked_keywords
@@ -163,7 +397,7 @@ def is_valid_job(title):
     return True
 
 # =========================
-# PROCESS JOB
+# COMMON JOB PROCESSOR
 # =========================
 
 def process_job(
@@ -177,24 +411,57 @@ def process_job(
 
     clean_link = link.split("?")[0]
 
-    # Duplicate Check
-    if is_duplicate(clean_link):
+    # GENERATE UNIQUE JOB ID
+    job_id = generate_job_id(
+        title,
+        company,
+        platform
+    )
+
+    # DUPLICATE CHECK
+    if is_duplicate(job_id):
 
         print("Duplicate Job Skipped")
 
         return
 
-    # Ignore old jobs during first startup
+    # IGNORE OLD JOBS ON FIRST RUN
     if first_run:
 
-        save_job(clean_link)
+        save_job(job_id)
 
         print("Old Job Ignored")
 
         return
 
+    # PRODUCT COMPANY CHECK
+    if is_product_company(company):
+
+        company_type = "🔥 PRODUCT BASED COMPANY"
+
+    else:
+
+        company_type = "🏢 SERVICE BASED COMPANY"
+
+    # PRIORITY SCORE
+    priority = calculate_priority(
+        title,
+        company
+    )
+
+    # EXPERIENCE LEVEL
+    experience_level = detect_experience(
+        title
+    )
+
     message = f"""
 🚀 New ServiceNow Job Found
+
+{priority}
+
+{company_type}
+
+📈 Experience Level: {experience_level}
 
 🌐 Platform: {platform}
 
@@ -215,100 +482,115 @@ def process_job(
         message
     )
 
-    save_job(clean_link)
+    save_job(job_id)
 
 # =========================
-# LINKEDIN JOBS
+# LINKEDIN SCRAPER
 # =========================
 
 def check_linkedin_jobs():
 
     print("Checking LinkedIn jobs...")
 
-    url = "https://www.linkedin.com/jobs/search/?keywords=ServiceNow%20Administrator&location=Hyderabad%2C%20Telangana%2C%20India"
+    url = "https://www.linkedin.com/jobs/search/?keywords=ServiceNow&location=Hyderabad%2C%20Telangana%2C%20India"
 
     headers = {
         "User-Agent": "Mozilla/5.0"
     }
 
-    response = requests.get(
-        url,
-        headers=headers
-    )
+    try:
 
-    soup = BeautifulSoup(
-        response.text,
-        "html.parser"
-    )
+        response = requests.get(
+            url,
+            headers=headers,
+            timeout=30
+        )
 
-    jobs = soup.find_all(
-        "div",
-        class_="base-card"
-    )
+        soup = BeautifulSoup(
+            response.text,
+            "html.parser"
+        )
 
-    print(f"LinkedIn Jobs Found: {len(jobs)}")
+        jobs = soup.find_all(
+            "div",
+            class_="base-card"
+        )
 
-    for job in jobs:
+        print(f"LinkedIn Jobs Found: {len(jobs)}")
 
-        try:
+        for job in jobs:
 
-            title = job.find("h3").text.strip()
+            try:
 
-            if not is_valid_job(title):
-                continue
+                title = job.find(
+                    "h3"
+                ).text.strip()
 
-            company = job.find(
-                "h4"
-            ).text.strip()
+                if not is_valid_job(title):
+                    continue
 
-            link = job.find(
-                "a"
-            )["href"]
+                company = job.find(
+                    "h4"
+                ).text.strip()
 
-            process_job(
-                title,
-                company,
-                link,
-                "LinkedIn"
-            )
+                link = job.find(
+                    "a"
+                )["href"]
 
-        except Exception as e:
-            print("LinkedIn Error:", e)
+                process_job(
+                    title,
+                    company,
+                    link,
+                    "LinkedIn"
+                )
+
+            except Exception as e:
+                print("LinkedIn Parsing Error:", e)
+
+    except Exception as e:
+        print("LinkedIn Error:", e)
 
 # =========================
-# NAUKRI JOBS
+# FOUNDIT SCRAPER
 # =========================
 
-def check_naukri_jobs():
+def check_foundit_jobs():
 
-    print("Checking Naukri jobs...")
+    print("Checking Foundit jobs...")
 
-    naukri_jobs = get_naukri_jobs()
+    try:
 
-    print(f"Naukri Jobs Retrieved: {len(naukri_jobs)}")
+        foundit_jobs = get_foundit_jobs()
 
-    for job in naukri_jobs:
+        print(
+            f"Foundit Jobs Retrieved: {len(foundit_jobs)}"
+        )
 
-        try:
+        for job in foundit_jobs:
 
-            title = job["title"]
+            try:
 
-            if not is_valid_job(title):
-                continue
+                title = job["title"]
 
-            company = job["company"]
+                if not is_valid_job(title):
+                    continue
 
-            link = job["link"]
+                company = job["company"]
 
-            process_job(
-                title,
-                company,
-                link,
-                "Naukri"
-            )
+                link = job["link"]
 
-        except Exception as e:
-            print("Naukri Error:", e)
+                process_job(
+                    title,
+                    company,
+                    link,
+                    "Foundit"
+                )
+
+            except Exception as e:
+                print("Foundit Job Error:", e)
+
+    except Exception as e:
+        print("Foundit Error:", e)
 
 # =========================
 # MAIN LOOP
@@ -326,9 +608,8 @@ while True:
 
     check_linkedin_jobs()
 
-    check_naukri_jobs()
+    check_foundit_jobs()
 
     first_run = False
 
     time.sleep(1800)
-
